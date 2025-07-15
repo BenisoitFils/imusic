@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Mon App de Musique</title>
+  <title>Lecteur de Musique Avancé</title>
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -12,14 +12,14 @@
       display: flex;
       flex-direction: column;
       align-items: center;
-      padding: 50px;
+      padding: 30px;
     }
     .player {
       background: #1f1f1f;
       padding: 20px;
       border-radius: 12px;
       text-align: center;
-      max-width: 400px;
+      max-width: 500px;
       width: 100%;
     }
     audio {
@@ -31,22 +31,44 @@
       margin-bottom: 10px;
     }
     button {
-      margin: 10px 5px;
-      padding: 10px 15px;
+      margin: 8px 5px;
+      padding: 8px 12px;
       border: none;
       border-radius: 5px;
       background-color: #3a3a3a;
       color: white;
       cursor: pointer;
     }
-    select, input {
-      margin-bottom: 10px;
-      padding: 5px;
+    select, input[type="text"], input[type="range"] {
       width: 100%;
+      padding: 8px;
+      margin-top: 8px;
       border-radius: 5px;
       border: none;
     }
-    input {
+    #playlist {
+      list-style: none;
+      padding: 0;
+      margin-top: 15px;
+      text-align: left;
+    }
+    #playlist li {
+      padding: 5px;
+      cursor: pointer;
+    }
+    #playlist li:hover {
+      background-color: #2a2a2a;
+    }
+    #playlist li.active {
+      font-weight: bold;
+      color: #00ffcc;
+    }
+    #coverImage {
+      margin-top: 15px;
+      max-width: 100%;
+      border-radius: 8px;
+    }
+    #timeDisplay {
       margin-top: 10px;
     }
   </style>
@@ -56,82 +78,110 @@
   <div class="player">
     <h1>🎵 Mon Lecteur Musical</h1>
 
-    <!-- Champ de recherche -->
     <input type="text" id="searchInput" placeholder="Rechercher une chanson..." />
-
-    <!-- Liste déroulante -->
-    <select id="musicSelector"></select>
-
-    <!-- Lecteur audio -->
     <audio id="audioPlayer" controls>
       <source src="" type="audio/mpeg">
       Votre navigateur ne supporte pas la lecture audio.
     </audio>
+    
+    <div id="timeDisplay">00:00 / 00:00</div>
+    <input type="range" id="volumeControl" min="0" max="1" step="0.01" value="1">
 
-    <!-- Boutons -->
     <div>
       <button id="prevBtn">⏮️ Précédent</button>
       <button id="nextBtn">⏭️ Suivant</button>
+      <button id="loopBtn">🔁 Boucle</button>
+      <button id="shuffleBtn">🔀 Aléatoire</button>
     </div>
+
+    <img id="coverImage" src="" alt="Couverture" />
+
+    <ul id="playlist"></ul>
   </div>
 
   <script>
     const musicList = [
-      { title: "Dyaspora Voye Lajan", file: "assets/music/dyaspora voye lajan.mp3" },
-      { title: "Thelo x Wendyyy - RDV", file: "assets/music/Thelo x Wendyyy - RDV(MP3_160K).mp3" },
-      { title: "Drake Up All Night Ft. Nicki Minaj", file: "assets/music/Drake Up All Night Ft. Nicki Minaj With Lyrics(MP3_160K).mp3" },
-      { title: "Big Shaq - Man's Not Hot", file: "assets/music/Big Shaq  - Man_s Not Hot Lyrics(MP3_160K).mp3" }
+      {
+        title: "Dyaspora Voye Lajan",
+        file: "assets/music/dyaspora voye lajan.mp3",
+        cover: "assets/covers/dyaspora.jpg"
+      },
+      {
+        title: "Thelo x Wendyyy - RDV",
+        file: "assets/music/Thelo x Wendyyy - RDV(MP3_160K).mp3",
+        cover: "assets/covers/rdv.jpg"
+      },
+      {
+        title: "Drake Up All Night Ft. Nicki Minaj",
+        file: "assets/music/Drake Up All Night Ft. Nicki Minaj With Lyrics(MP3_160K).mp3",
+        cover: "assets/covers/drake.jpg"
+      },
+      {
+        title: "Big Shaq - Man's Not Hot",
+        file: "assets/music/Big Shaq  - Man_s Not Hot Lyrics(MP3_160K).mp3",
+        cover: "assets/covers/bigshaq.jpg"
+      }
     ];
 
-    const selector = document.getElementById('musicSelector');
-    const searchInput = document.getElementById('searchInput');
     const audio = document.getElementById('audioPlayer');
     const source = audio.querySelector('source');
+    const searchInput = document.getElementById('searchInput');
+    const volumeControl = document.getElementById('volumeControl');
+    const timeDisplay = document.getElementById('timeDisplay');
+    const coverImage = document.getElementById('coverImage');
+    const playlist = document.getElementById('playlist');
     const prevBtn = document.getElementById('prevBtn');
     const nextBtn = document.getElementById('nextBtn');
+    const loopBtn = document.getElementById('loopBtn');
+    const shuffleBtn = document.getElementById('shuffleBtn');
 
     let fullList = [...musicList];
     let filteredList = [...musicList];
     let currentIndex = 0;
+    let isLooping = false;
+    let isShuffling = false;
 
-    // Fonction pour remplir la liste
-    function populateSelector(list) {
-      selector.innerHTML = "";
-      list.forEach((music, index) => {
-        const option = document.createElement('option');
-        option.value = index;
-        option.textContent = music.title;
-        selector.appendChild(option);
+    function formatTime(sec) {
+      const minutes = Math.floor(sec / 60).toString().padStart(2, '0');
+      const seconds = Math.floor(sec % 60).toString().padStart(2, '0');
+      return `${minutes}:${seconds}`;
+    }
+
+    function updateTimeDisplay() {
+      timeDisplay.textContent = `${formatTime(audio.currentTime)} / ${formatTime(audio.duration || 0)}`;
+    }
+
+    function updatePlaylistUI() {
+      playlist.innerHTML = "";
+      filteredList.forEach((track, i) => {
+        const li = document.createElement('li');
+        li.textContent = track.title;
+        if (i === currentIndex) li.classList.add("active");
+        li.addEventListener('click', () => {
+          loadAndPlay(i);
+        });
+        playlist.appendChild(li);
       });
     }
 
-    // Charger et jouer une musique
     function loadAndPlay(index) {
       if (!filteredList[index]) return;
       currentIndex = index;
-      const music = filteredList[index];
+      const music = filteredList[currentIndex];
       source.src = music.file;
+      coverImage.src = music.cover || '';
       audio.load();
       audio.play();
-      selector.selectedIndex = index;
+      updatePlaylistUI();
     }
 
-    // Recherche en temps réel
-    searchInput.addEventListener('input', () => {
-      const keyword = searchInput.value.toLowerCase();
-      filteredList = fullList.filter(m => m.title.toLowerCase().includes(keyword));
-      populateSelector(filteredList);
-
-      // Reset index et relancer musique si dispo
-      currentIndex = 0;
-      if (filteredList.length > 0) {
-        loadAndPlay(currentIndex);
-      } else {
-        audio.pause();
-        source.src = "";
-        audio.load();
-      }
+    // Contrôle du volume
+    volumeControl.addEventListener('input', () => {
+      audio.volume = volumeControl.value;
     });
+
+    // Mise à jour du temps
+    audio.addEventListener('timeupdate', updateTimeDisplay);
 
     // Navigation
     prevBtn.addEventListener('click', () => {
@@ -146,13 +196,47 @@
       loadAndPlay(currentIndex);
     });
 
-    selector.addEventListener('change', () => {
-      currentIndex = parseInt(selector.value);
+    // Boucle et shuffle
+    loopBtn.addEventListener('click', () => {
+      isLooping = !isLooping;
+      audio.loop = isLooping;
+      loopBtn.style.backgroundColor = isLooping ? "#0077cc" : "#3a3a3a";
+    });
+
+    shuffleBtn.addEventListener('click', () => {
+      isShuffling = !isShuffling;
+      shuffleBtn.style.backgroundColor = isShuffling ? "#0077cc" : "#3a3a3a";
+    });
+
+    audio.addEventListener('ended', () => {
+      if (isLooping) return;
+      if (isShuffling) {
+        currentIndex = Math.floor(Math.random() * filteredList.length);
+      } else {
+        currentIndex = (currentIndex + 1) % filteredList.length;
+      }
       loadAndPlay(currentIndex);
     });
 
-    // Lancer au chargement
-    populateSelector(filteredList);
+    // Recherche
+    searchInput.addEventListener('input', () => {
+      const keyword = searchInput.value.toLowerCase();
+      filteredList = fullList.filter(m => m.title.toLowerCase().includes(keyword));
+      currentIndex = 0;
+      updatePlaylistUI();
+      if (filteredList.length > 0) {
+        loadAndPlay(currentIndex);
+      } else {
+        audio.pause();
+        source.src = "";
+        audio.load();
+        coverImage.src = "";
+        timeDisplay.textContent = "00:00 / 00:00";
+      }
+    });
+
+    // Initialisation
+    updatePlaylistUI();
     loadAndPlay(currentIndex);
   </script>
 
