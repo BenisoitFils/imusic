@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Mon App de Musique</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #121212;
+      color: #fff;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 50px;
+    }
+    .player {
+      background: #1f1f1f;
+      padding: 20px;
+      border-radius: 12px;
+      text-align: center;
+      max-width: 400px;
+      width: 100%;
+    }
+    audio {
+      width: 100%;
+      margin-top: 15px;
+    }
+    h1 {
+      font-size: 24px;
+      margin-bottom: 10px;
+    }
+    button {
+      margin: 10px 5px;
+      padding: 10px 15px;
+      border: none;
+      border-radius: 5px;
+      background-color: #3a3a3a;
+      color: white;
+      cursor: pointer;
+    }
+    select, input {
+      margin-bottom: 10px;
+      padding: 5px;
+      width: 100%;
+      border-radius: 5px;
+      border: none;
+    }
+    input {
+      margin-top: 10px;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="player">
+    <h1>🎵 Mon Lecteur Musical</h1>
+
+    <!-- Champ de recherche -->
+    <input type="text" id="searchInput" placeholder="Rechercher une chanson..." />
+
+    <!-- Liste déroulante -->
+    <select id="musicSelector"></select>
+
+    <!-- Lecteur audio -->
+    <audio id="audioPlayer" controls>
+      <source src="" type="audio/mpeg">
+      Votre navigateur ne supporte pas la lecture audio.
+    </audio>
+
+    <!-- Boutons -->
+    <div>
+      <button id="prevBtn">⏮️ Précédent</button>
+      <button id="nextBtn">⏭️ Suivant</button>
+    </div>
+  </div>
+
+  <script>
+    const musicList = [
+      { title: "Dyaspora Voye Lajan", file: "music/dyaspora voye lajan.mp3" },
+      { title: "Thelo x Wendyyy - RDV", file: "music/Thelo x Wendyyy - RDV(MP3_160K).mp3" },
+      { title: "Drake Up All Night Ft. Nicki Minaj", file: "music/Drake Up All Night Ft. Nicki Minaj With Lyrics(MP3_160K).mp3" },
+      { title: "Big Shaq - Man's Not Hot", file: "music/Big Shaq  - Man_s Not Hot Lyrics(MP3_160K).mp3" }
+    ];
+
+    const selector = document.getElementById('musicSelector');
+    const searchInput = document.getElementById('searchInput');
+    const audio = document.getElementById('audioPlayer');
+    const source = audio.querySelector('source');
+    const prevBtn = document.getElementById('prevBtn');
+    const nextBtn = document.getElementById('nextBtn');
+
+    let fullList = [...musicList];
+    let filteredList = [...musicList];
+    let currentIndex = 0;
+
+    // Fonction pour remplir la liste
+    function populateSelector(list) {
+      selector.innerHTML = "";
+      list.forEach((music, index) => {
+        const option = document.createElement('option');
+        option.value = index;
+        option.textContent = music.title;
+        selector.appendChild(option);
+      });
+    }
+
+    // Charger et jouer une musique
+    function loadAndPlay(index) {
+      if (!filteredList[index]) return;
+      currentIndex = index;
+      const music = filteredList[index];
+      source.src = music.file;
+      audio.load();
+      audio.play();
+      selector.selectedIndex = index;
+    }
+
+    // Recherche en temps réel
+    searchInput.addEventListener('input', () => {
+      const keyword = searchInput.value.toLowerCase();
+      filteredList = fullList.filter(m => m.title.toLowerCase().includes(keyword));
+      populateSelector(filteredList);
+
+      // Reset index et relancer musique si dispo
+      currentIndex = 0;
+      if (filteredList.length > 0) {
+        loadAndPlay(currentIndex);
+      } else {
+        audio.pause();
+        source.src = "";
+        audio.load();
+      }
+    });
+
+    // Navigation
+    prevBtn.addEventListener('click', () => {
+      if (filteredList.length === 0) return;
+      currentIndex = (currentIndex - 1 + filteredList.length) % filteredList.length;
+      loadAndPlay(currentIndex);
+    });
+
+    nextBtn.addEventListener('click', () => {
+      if (filteredList.length === 0) return;
+      currentIndex = (currentIndex + 1) % filteredList.length;
+      loadAndPlay(currentIndex);
+    });
+
+    selector.addEventListener('change', () => {
+      currentIndex = parseInt(selector.value);
+      loadAndPlay(currentIndex);
+    });
+
+    // Lancer au chargement
+    populateSelector(filteredList);
+    loadAndPlay(currentIndex);
+  </script>
+
+</body>
+</html>
